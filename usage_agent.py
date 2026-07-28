@@ -12,6 +12,7 @@ Emits a single compact JSON line the Swift widget consumes:
     "ok": bool,               # true if we have live numbers this run
     "stale": bool,            # true if numbers are from cache (token expired)
     "reason": "...",          # when ok=false and no cache
+    "plan": "max|pro|team|…", # subscriptionType from the CLI keychain (may be null)
     "fetched_at": <epoch s>,  # when the cached/live numbers were fetched
     "limits": [               # normalized from the API's limits[] array
        {"kind": "...", "label": "5-hour session", "short": "5h",
@@ -52,9 +53,9 @@ def read_cli_token():
             ["security", "find-generic-password", "-s", CLI_SVC, "-w"],
             stderr=subprocess.DEVNULL).decode()
         o = json.loads(raw)["claudeAiOauth"]
-        return o.get("accessToken"), o.get("expiresAt", 0)
+        return o.get("accessToken"), o.get("expiresAt", 0), o.get("subscriptionType")
     except Exception:
-        return None, 0
+        return None, 0, None
 
 
 def http_get(url, headers):
@@ -136,28 +137,29 @@ def save_cache(payload):
         json.dump(payload, f)
 
 
-def serve_cache(reason, auth_expired=False, transient=False):
+def serve_cache(reason, auth_expired=False, transient=False, plan=None):
     """Emit the last-good cached numbers (if any), tagged with why we couldn't
     fetch. auth_expired => genuinely signed out (UI should dim). transient =>
     token is fine but the fetch failed, e.g. 429 (UI should KEEP the colors)."""
     cached = load_cache() or {}
     out = dict(cached)
     out.update({"ok": False, "auth_expired": auth_expired,
-                "transient": transient, "stale": auth_expired, "reason": reason})
+                "transient": transient, "stale": auth_expired, "reason": reason,
+                "plan": plan or cached.get("plan")})
     out.setdefault("limits", [])
     print(json.dumps(out))
 
 
 def main():
-    token, expires_at = read_cli_token()
+    token, expires_at, plan = read_cli_token()
     now_ms = time.time() * 1000
 
     if not token:
-        serve_cache("no_cli_token", auth_expired=True); return
+        serve_cache("no_cli_token", auth_expired=True, plan=plan); return
 
     # Token expired -> don't refresh (read-only). Signed-out => dim.
     if expires_at - now_ms < 60_000:
-        serve_cache("cli_token_expired", auth_expired=True); return
+        serve_cache("cli_token_expired", auth_expired=True, plan=plan); return
 
     # Live fetch.
     try:
@@ -168,17 +170,18 @@ def main():
             "User-Agent": UA,
         })
     except Exception:
-        serve_cache("http_error", transient=True); return
+        serve_cache("http_error", transient=True, plan=plan); return
 
     # An error body (most commonly a 429 rate_limit_error) is TRANSIENT: the
     # token is valid and our cached numbers are only minutes old — keep colors.
     if not isinstance(resp, dict) or "error" in resp:
         rtype = resp.get("error", {}).get("type", "bad_response") if isinstance(resp, dict) else "bad_response"
-        serve_cache(rtype, transient=True); return
+        serve_cache(rtype, transient=True, plan=plan); return
 
     payload = {
         "ok": True, "auth_expired": False, "transient": False, "stale": False,
         "fetched_at": int(time.time()),
+        "plan": plan,
         "limits": extract_limits(resp),
         "credits": extract_credits(resp),
     }

@@ -9,7 +9,7 @@ percentages `claude` shows via `/usage`) in real time — color-coded, always vi
 └─────────────────────────────────────────────┘
         click ↓
    ┌──────────────────────────────────────┐
-   │ Claude usage — Max plan              │
+   │ Claude usage — Max plan   (detected)│
    │ ──────────────────────────────────── │
    │ 7-day (Fable) ●            🟠         │
    │    82% used · resets in 1d 16h       │

@@ -1,4 +1,5 @@
-// ClaudeUsageBar — a macOS menu-bar widget showing your Claude (Max plan) usage.
+// ClaudeUsageBar — a macOS menu-bar widget showing your Claude subscription usage
+// (plan detected automatically: Max, Pro, Team, …).
 //
 // Primary numbers come from Anthropic's /api/oauth/usage endpoint, fetched
 // read-only via usage_agent.py using the Claude Code CLI's existing token
@@ -39,6 +40,7 @@ struct RealUsage {
     var authExpired = false   // signed out -> dim the bar
     var transient = false     // fetch failed (e.g. 429) but token valid -> keep colors
     var reason: String? = nil
+    var plan: String? = nil   // subscriptionType from the CLI keychain (max/pro/team/…)
     var fetchedAt: Date? = nil
     var limits: [Limit] = []
     var creditsUsed: Double? = nil, creditsLimit: Double? = nil, creditsPct: Int? = nil
@@ -74,6 +76,7 @@ func runAgent() -> RealUsage {
         out.authExpired = (o["auth_expired"] as? Bool) ?? false
         out.transient = (o["transient"] as? Bool) ?? false
         out.reason = o["reason"] as? String
+        out.plan = o["plan"] as? String
         if let ts = o["fetched_at"] as? Double { out.fetchedAt = Date(timeIntervalSince1970: ts) }
         if let ts = o["fetched_at"] as? Int { out.fetchedAt = Date(timeIntervalSince1970: Double(ts)) }
         if let arr = o["limits"] as? [[String: Any]] {
@@ -180,6 +183,14 @@ func countdown(to date: Date?) -> String {
 
 /// Color the number by how much of the limit is used:
 ///   0–33% green · 33–66% yellow · 66–90% orange · >90% red
+/// "max" -> "Max", "team" -> "Team", "claude_pro" -> "Claude Pro". Nil/empty -> nil.
+func prettyPlan(_ raw: String?) -> String? {
+    guard let raw = raw, !raw.isEmpty else { return nil }
+    return raw.split(whereSeparator: { $0 == "_" || $0 == "-" || $0 == " " })
+        .map { $0.prefix(1).uppercased() + $0.dropFirst() }
+        .joined(separator: " ")
+}
+
 func color(forPct pct: Double) -> NSColor {
     switch pct {
     case ..<33:  return .systemGreen
@@ -346,7 +357,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func rebuildMenu() {
         let menu = statusItem.menu!
         menu.removeAllItems()
-        header("Claude usage — Max plan", menu)
+        let title = prettyPlan(real.plan).map { "Claude usage — \($0) plan" } ?? "Claude usage"
+        header(title, menu)
         menu.addItem(.separator())
 
         if real.limits.isEmpty {
