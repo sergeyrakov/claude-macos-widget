@@ -1,0 +1,17 @@
+# Build artifacts
+ClaudeUsageBar.app/
+ClaudeUsageBar
+*.o
+*.dSYM/
+
+# macOS
+.DS_Store
+
+# Claude Code personal/local settings — contains machine-specific paths & username.
+# (Share-safe settings, if any, would go in .claude/settings.json instead.)
+.claude/settings.local.json
+
+# Local runtime state (never generated inside the repo, but just in case)
+.config/
+last_usage.json
+pkce.json
