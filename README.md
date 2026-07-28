@@ -3,6 +3,17 @@
 A tiny native **macOS menu-bar widget** that shows your **Claude subscription usage** (the same
 percentages `claude` shows via `/usage`) in real time — color-coded, always visible, no dock icon.
 
+> ### Supported plans
+>
+> | Plan | Supported | Notes |
+> |------|:---------:|-------|
+> | **Max** | ✅ | Verified. |
+> | **Pro** | ✅ | Same per-user limits as Max. |
+> | **Team** | ⚠️ | Untested; works only if your seat exposes per-user limits. |
+> | **Enterprise** | ❌ | **Not supported.** Usage is managed at the org level, so the API returns no per-user limits and the widget just sits at `✦ …`. |
+>
+> This tool relies on per-user 5-hour / 7-day limits, which only individual subscription plans expose.
+
 ```
 ┌─────────────────────────────────────────────┐
 │  … other menu extras …        🟢 5h 27%   🔋 │   ← the menu bar
