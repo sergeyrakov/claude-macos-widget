@@ -189,5 +189,40 @@ def main():
     print(json.dumps(payload))
 
 
+def cmd_debug():
+    """Print auth state + the RAW usage response (with HTTP status) for
+    troubleshooting. Never prints the token itself."""
+    token, expires_at, plan = read_cli_token()
+    print("== Claude Usage Bar diagnostics ==")
+    print("keychain item 'Claude Code-credentials' present:", token is not None)
+    print("subscriptionType (plan):", repr(plan))
+    if not token:
+        print("=> No token found. Enterprise/SSO logins may store it elsewhere, or "
+              "Claude Code isn't logged in on this machine.")
+        return
+    mins = (expires_at - time.time() * 1000) / 1000 / 60
+    print(f"access token expires in: {mins:.1f} min ({'VALID' if mins > 1 else 'EXPIRED'})")
+
+    cmd = ["curl", "-s", "-w", "\n__HTTP__%{http_code}", "--max-time", "25", USAGE_URL,
+           "-H", f"Authorization: Bearer {token}",
+           "-H", "anthropic-beta: oauth-2025-04-20",
+           "-H", "anthropic-version: 2023-06-01",
+           "-H", f"User-Agent: {UA}"]
+    out = subprocess.check_output(cmd).decode()
+    body, _, status = out.rpartition("__HTTP__")
+    print("GET /api/oauth/usage -> HTTP", status.strip())
+    print("--- raw response (review before sharing; contains no token) ---")
+    try:
+        parsed = json.loads(body)
+        print(json.dumps(parsed, indent=2)[:4000])
+        if isinstance(parsed, dict) and isinstance(parsed.get("limits"), list):
+            print(f"--- normalized: {len(extract_limits(parsed))} limit(s) parsed ---")
+    except Exception:
+        print(body[:2000])
+
+
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) > 1 and sys.argv[1] == "debug":
+        cmd_debug()
+    else:
+        main()
