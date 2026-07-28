@@ -100,7 +100,7 @@ No Xcode app, no Homebrew, no Python packages required.
 ## Install
 
 ```bash
-git clone https://github.com/<you>/claude-macos-widget.git
+git clone https://github.com/sergeyrakov/claude-macos-widget.git
 cd claude-macos-widget
 ./install.sh
 ```
