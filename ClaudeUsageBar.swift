@@ -227,7 +227,10 @@ let METRIC_OPTIONS: [(id: String, label: String)] = [
     ("cost",           "Today's cost (local estimate)"),
 ]
 
-struct LocalTotals { var todayCost = 0.0; var todayTok = 0; var w5Cost = 0.0; var w5Tok = 0 }
+struct LocalTotals {
+    var todayCost = 0.0; var todayTok = 0   // for the menu-bar "Today's cost" metric
+    var d7Cost = 0.0; var d7Tok = 0; var d30Cost = 0.0; var d30Tok = 0
+}
 
 // ------------------------------------------------------------------ App
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
@@ -286,11 +289,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             let r: RealUsage? = fetchReal ? runAgent() : nil
             let entries = self.scanner.scan()
             var lt = LocalTotals()
-            let now = Date(); let cal = Calendar.current; let since5h = now.addingTimeInterval(-5*3600)
+            let now = Date(); let cal = Calendar.current
+            let since7d = now.addingTimeInterval(-7*86400)
+            let since30d = now.addingTimeInterval(-30*86400)
             for e in entries {
                 let c = costOf(e)
                 if cal.isDate(e.date, inSameDayAs: now) { lt.todayCost += c; lt.todayTok += e.total }
-                if e.date >= since5h { lt.w5Cost += c; lt.w5Tok += e.total }
+                if e.date >= since30d { lt.d30Cost += c; lt.d30Tok += e.total }
+                if e.date >= since7d { lt.d7Cost += c; lt.d7Tok += e.total }
             }
             DispatchQueue.main.async {
                 if let r = r {
@@ -374,7 +380,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         } else {
             for lim in real.limits.sorted(by: { $0.percent > $1.percent }) {
                 let star = lim.isActive ? " ●" : ""
-                headerColored(lim.label + star, color(forPct: lim.percent), menu)
+                // Standard label color (adaptive black/white) — the usage color
+                // only belongs in the menu bar; green/yellow read poorly in menus.
+                headerColored(lim.label + star, .labelColor, menu)
                 disabled(String(format: "   %.0f%% used   ·   resets in %@", lim.percent, countdown(to: lim.resetsAt)), menu)
             }
             if let used = real.creditsUsed, let lim = real.creditsLimit, lim > 0 {
@@ -385,8 +393,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         menu.addItem(.separator())
         header("Local estimate (from ~/.claude logs)", menu)
-        disabled("   Today:  \(fmtCost(locals.todayCost))  ·  \(fmtTokens(locals.todayTok)) tok", menu)
-        disabled("   Last 5h:  \(fmtCost(locals.w5Cost))  ·  \(fmtTokens(locals.w5Tok)) tok", menu)
+        disabled("   Last 7d:  \(fmtCost(locals.d7Cost))  ·  \(fmtTokens(locals.d7Tok)) tok", menu)
+        disabled("   Last 30d:  \(fmtCost(locals.d30Cost))  ·  \(fmtTokens(locals.d30Tok)) tok", menu)
 
         menu.addItem(.separator())
 
@@ -432,17 +440,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func menuWillOpen(_ menu: NSMenu) { rebuildMenu() }   // refresh countdowns/checkmarks instantly
 
     // helpers
-    private func header(_ t: String, _ menu: NSMenu) { headerColored(t, .secondaryLabelColor, menu) }
+    private func header(_ t: String, _ menu: NSMenu) { headerColored(t, .labelColor, menu) }
     private func headerColored(_ t: String, _ c: NSColor, _ menu: NSMenu) {
         let i = NSMenuItem(title: t, action: nil, keyEquivalent: ""); i.isEnabled = false
         i.attributedTitle = NSAttributedString(string: t, attributes: [
-            .font: NSFont.boldSystemFont(ofSize: 12), .foregroundColor: c])
+            .font: NSFont.boldSystemFont(ofSize: 13), .foregroundColor: c])
         menu.addItem(i)
     }
     private func disabled(_ t: String, _ menu: NSMenu) {
         let i = NSMenuItem(title: t, action: nil, keyEquivalent: ""); i.isEnabled = false
+        // Bigger (13pt), heavier (medium), full-contrast text — the grey/thin/small
+        // combo was the readability problem.
         i.attributedTitle = NSAttributedString(string: t, attributes: [
-            .font: NSFont.systemFont(ofSize: 11), .foregroundColor: NSColor.tertiaryLabelColor])
+            .font: NSFont.systemFont(ofSize: 13, weight: .medium),
+            .foregroundColor: NSColor.labelColor])
         menu.addItem(i)
     }
 }
