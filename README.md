@@ -32,8 +32,8 @@ percentages `claude` shows via `/usage`) in real time — color-coded, always vi
    │    $0.00 of $10.00                    │
    │ ──────────────────────────────────── │
    │ Local estimate (from ~/.claude logs) │
-   │    Today:  $12.40 · 3.1M tok         │
-   │    Last 5h: $4.10 · 1.2M tok         │
+   │    Last 7d:  $84.20 · 21.4M tok      │
+   │    Last 30d: $312.90 · 88.7M tok     │
    │ ──────────────────────────────────── │
    │ Show in menu bar            ▸        │
    │ Live · updated 14:03:00              │
