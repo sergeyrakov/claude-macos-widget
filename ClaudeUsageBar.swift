@@ -181,23 +181,12 @@ func countdown(to date: Date?) -> String {
     return "\(m)m"
 }
 
-/// Color the number by how much of the limit is used:
-///   0–33% green · 33–66% yellow · 66–90% orange · >90% red
 /// "max" -> "Max", "team" -> "Team", "claude_pro" -> "Claude Pro". Nil/empty -> nil.
 func prettyPlan(_ raw: String?) -> String? {
     guard let raw = raw, !raw.isEmpty else { return nil }
     return raw.split(whereSeparator: { $0 == "_" || $0 == "-" || $0 == " " })
         .map { $0.prefix(1).uppercased() + $0.dropFirst() }
         .joined(separator: " ")
-}
-
-func color(forPct pct: Double) -> NSColor {
-    switch pct {
-    case ..<33:  return .systemGreen
-    case ..<66:  return .systemYellow
-    case ..<90:  return .systemOrange
-    default:     return .systemRed
-    }
 }
 
 /// The status-bar button ignores attributedTitle color, so we render the text
@@ -322,18 +311,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         btn.imagePosition = .imageOnly
         btn.title = ""
     }
-    /// Plain fallback (default color) for non-data states.
-    private func setBarPlain(_ text: String) {
-        guard let btn = statusItem.button else { return }
-        btn.image = nil
-        btn.title = text
-    }
+    /// Fallback for non-data states — same white rendering as the data states.
+    private func setBarPlain(_ text: String) { setBar(text, .white) }
 
     private func render() {
         let choice = metric
 
         if choice == "cost" {
-            setBar("✦ " + fmtCost(locals.todayCost), real.authExpired ? .tertiaryLabelColor : .labelColor)
+            setBar("✦ " + fmtCost(locals.todayCost), .white)
             rebuildMenu(); return
         }
 
@@ -351,7 +336,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             let warn = (lim.severity != "normal") ? "⚠ " : ""
             let dim = real.authExpired ? " ·" : ""   // dim only when signed out
             let title = String(format: "%@%@ %.0f%%%@", warn, lim.short, lim.percent, dim)
-            setBar(title, real.authExpired ? .tertiaryLabelColor : color(forPct: lim.percent))
+            setBar(title, .white)
         } else if real.authExpired {
             setBarPlain("✦ login")
         } else {
@@ -439,22 +424,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func menuWillOpen(_ menu: NSMenu) { rebuildMenu() }   // refresh countdowns/checkmarks instantly
 
-    // helpers
+    // helpers — rendered as custom views rather than attributedTitle: AppKit auto-dims
+    // a disabled NSMenuItem's title to a washed-out grey regardless of foregroundColor,
+    // which is why the color stayed unreadable even at full labelColor/13pt. A custom
+    // view draws itself and isn't subject to that dimming.
     private func header(_ t: String, _ menu: NSMenu) { headerColored(t, .labelColor, menu) }
     private func headerColored(_ t: String, _ c: NSColor, _ menu: NSMenu) {
-        let i = NSMenuItem(title: t, action: nil, keyEquivalent: ""); i.isEnabled = false
-        i.attributedTitle = NSAttributedString(string: t, attributes: [
-            .font: NSFont.boldSystemFont(ofSize: 13), .foregroundColor: c])
-        menu.addItem(i)
+        menu.addItem(textItem(t, font: .boldSystemFont(ofSize: 13), color: c))
     }
     private func disabled(_ t: String, _ menu: NSMenu) {
-        let i = NSMenuItem(title: t, action: nil, keyEquivalent: ""); i.isEnabled = false
-        // Bigger (13pt), heavier (medium), full-contrast text — the grey/thin/small
-        // combo was the readability problem.
-        i.attributedTitle = NSAttributedString(string: t, attributes: [
-            .font: NSFont.systemFont(ofSize: 13, weight: .medium),
-            .foregroundColor: NSColor.labelColor])
-        menu.addItem(i)
+        menu.addItem(textItem(t, font: .systemFont(ofSize: 13, weight: .medium), color: .labelColor))
+    }
+    private func textItem(_ t: String, font: NSFont, color: NSColor) -> NSMenuItem {
+        let label = NSTextField(labelWithString: t)
+        label.font = font
+        label.textColor = color
+        label.sizeToFit()
+        let leading: CGFloat = 14, trailing: CGFloat = 14
+        var f = label.frame; f.origin = NSPoint(x: leading, y: 0); label.frame = f
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: f.width + leading + trailing, height: f.height))
+        container.addSubview(label)
+        let item = NSMenuItem(); item.view = container; item.isEnabled = false
+        return item
     }
 }
 
