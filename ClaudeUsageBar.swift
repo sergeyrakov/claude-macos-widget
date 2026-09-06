@@ -14,11 +14,13 @@ import Foundation
 
 // ------------------------------------------------------------------ Config
 let PYTHON = "/usr/bin/python3"
-// The /api/oauth/usage endpoint is meant for on-demand viewing and rate-limits
-// aggressive polling (HTTP 429). 5-min aligned is a safe cadence; a 429 triggers
+// The /api/oauth/usage endpoint is meant for on-demand viewing and can rate-limit
+// aggressive polling (HTTP 429) — reportedly worse for some accounts/plans than
+// others (see anthropics/claude-code#30930). Live-tested at 15s intervals with no
+// 429s on this account, so 1-min aligned is used here; a 429 still triggers
 // adaptive backoff below and never greys the bar (the numbers are still recent).
-let POLL_ALIGN_MINUTES = 5    // refresh at :00 :05 :10 … aligned to the hour
-let RATE_LIMIT_BACKOFF: TimeInterval = 15 * 60   // wait this long after a 429
+let POLL_ALIGN_MINUTES = 1    // refresh at :00 :01 :02 … aligned to the hour
+let RATE_LIMIT_BACKOFF: TimeInterval = 10 * 60   // wait this long after a 429
 
 // usage_agent.py is copied into the app's Resources by build.sh — no hardcoded
 // user paths. Falls back to a copy beside the executable for dev runs.

@@ -148,7 +148,7 @@ run `claude` then `/login` once in a Terminal and it lights up automatically.
 ## How it works
 
 ```
-        ┌──────────────────────────┐     every 5 min (aligned :00/:05/…)
+        ┌──────────────────────────┐     every 1 min (aligned :00/:01/…)
         │  ClaudeUsageBar (Swift)  │  ───────────────────────────────►  spawns
         │  NSStatusItem menu-bar   │
         └──────────────────────────┘
@@ -224,18 +224,19 @@ or re-run `./install.sh`:
 
 | What | Where | Default |
 |------|-------|---------|
-| Refresh cadence | `POLL_ALIGN_MINUTES` in `ClaudeUsageBar.swift` | `5` (aligned to :00/:05/:10/…) |
-| 429 backoff | `RATE_LIMIT_BACKOFF` in `ClaudeUsageBar.swift` | `15 min` |
-| Color thresholds | `color(forPct:)` in `ClaudeUsageBar.swift` | 33 / 66 / 90 |
+| Refresh cadence | `POLL_ALIGN_MINUTES` in `ClaudeUsageBar.swift` | `1` (aligned to :00/:01/:02/…) |
+| 429 backoff | `RATE_LIMIT_BACKOFF` in `ClaudeUsageBar.swift` | `10 min` |
 | Price table (estimate) | `basePrice(_:)` in `ClaudeUsageBar.swift` | Opus 15/75, Sonnet 3/15, Haiku 1/5 ($/M) |
 | Default metric | `METRIC_KEY` register default in `applicationDidFinishLaunching` | `session` |
 
-**Don't poll aggressively.** `/api/oauth/usage` is built for on-demand viewing and returns **HTTP 429**
-under frequent polling — sub-5-minute cadences get throttled. When a 429 happens the widget keeps
-showing the last good (colored) numbers and backs off for `RATE_LIMIT_BACKOFF` before trying again; it
-does **not** grey out (greying is reserved for a genuinely expired login). Since limit percentages move
-slowly, a 5–10 minute cadence loses nothing. Use **Refresh now** for an immediate read (it bypasses the
-backoff).
+**Poll cadence.** `/api/oauth/usage` is built for on-demand viewing and can return **HTTP 429** under
+aggressive polling — but how aggressive varies by account/plan (see
+[anthropics/claude-code#30930](https://github.com/anthropics/claude-code/issues/30930) for reports of
+persistent 429s on some Max-plan accounts). This default cadence was live-tested at 15s intervals with
+zero 429s, so 1 minute is used here; your account/plan may differ. When a 429 does happen the widget
+keeps showing the last good (colored) numbers and backs off for `RATE_LIMIT_BACKOFF` before trying
+again; it does **not** grey out (greying is reserved for a genuinely expired login). Use **Refresh now**
+for an immediate read (it bypasses the backoff).
 
 ---
 
@@ -243,11 +244,9 @@ backoff).
 
 | Symptom | Cause / fix |
 |---------|-------------|
-| Bar shows **`✦ login`** | CLI token expired/absent. Run `claude` → `/login` once in a Terminal. |
-| Bar **dimmed / greyed** | Genuinely **signed out** (expired CLI login). Use Claude Code or `/login`; the widget can't refresh the token by design. A 429 does **not** grey it. |
-| Numbers not updating but **still colored** | Being **rate-limited** (429) and showing the last good values while it backs off. Normal. The dropdown status line says "rate-limited, backing off". |
-| **No color** in the bar | Make sure you're on the current build — coloring uses a non-template image; `attributedTitle` alone does not color the status bar. |
-| Yellow hard to read on a light bar | Deepen it: change `.systemYellow` in `color(forPct:)` to e.g. `NSColor(calibratedRed: 0.80, green: 0.60, blue: 0.0, alpha: 1)`. |
+| Bar shows **`✦ login`**, or a trailing **` ·`** after the percent | CLI token expired/absent — genuinely **signed out**. Run `claude` → `/login` once in a Terminal; the widget can't refresh the token by design. A 429 does **not** trigger this. |
+| Numbers not updating but **bar still white/normal** | Being **rate-limited** (429) and showing the last good values while it backs off. Normal. The dropdown status line says "rate-limited, backing off". |
+| Bar text looks dim, grey, or invisible | Make sure you're on the current build — the icon renders as a solid white non-template image; `attributedTitle` alone does not color the status bar, and older builds also color-coded by usage % (green/yellow/orange/red), which read poorly against a dark menu bar. |
 | Widget didn't start at login | Check the LaunchAgent: `launchctl print gui/$(id -u)/local.claude.usagebar`. Re-run `./install.sh`. |
 | Two copies running | Shouldn't happen (launch goes through `open`, which focuses the existing instance). If it does: `pkill -x ClaudeUsageBar` then reopen. |
 
