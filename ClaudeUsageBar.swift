@@ -336,8 +336,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         if let lim = chosen {
             let warn = (lim.severity != "normal") ? "⚠ " : ""
+            let reset = lim.resetsAt != nil ? " · \(countdown(to: lim.resetsAt))" : ""
             let dim = real.authExpired ? " ·" : ""   // dim only when signed out
-            let title = String(format: "%@%@ %.0f%%%@", warn, lim.short, lim.percent, dim)
+            let title = String(format: "%@%@ %.0f%%%@%@", warn, lim.short, lim.percent, reset, dim)
             setBar(title, .white)
         } else if real.authExpired {
             setBarPlain("✦ login")
