@@ -16,7 +16,7 @@ percentages `claude` shows via `/usage`) in real time — color-coded, always vi
 
 ```
 ┌─────────────────────────────────────────────┐
-│  … other menu extras …        🟢 5h 27%   🔋 │   ← the menu bar
+│  … other menu extras …  🟢 5h 27% · 4h47m 🔋 │   ← the menu bar
 └─────────────────────────────────────────────┘
         click ↓
    ┌──────────────────────────────────────┐
@@ -43,6 +43,8 @@ percentages `claude` shows via `/usage`) in real time — color-coded, always vi
 ```
 
 - **Colored right in the menu bar** — green → yellow → orange → red as you approach a limit.
+- **Live countdown to reset, right in the bar** — e.g. `5h 27% · 4h47m`, updating automatically every
+  minute as it counts down.
 - **You pick which number is shown** (5-hour session, 7-day, scoped model, most-constraining, or a local $ estimate) — click **Show in menu bar**.
 - **Reads your existing Claude Code login read-only.** It never refreshes or writes any token, so it can never disturb the CLI or log you out.
 - **Self-contained.** One Swift binary + one Python helper. No Xcode, no third-party menu-bar host, no dependencies.
