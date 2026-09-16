@@ -272,6 +272,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     /// "Refresh now" — clear any backoff and fetch immediately.
     @objc private func forceRefresh() { backoffUntil = nil; poll() }
 
+    /// "Sign in…" — shells out to the CLI's own `claude auth login`, which opens
+    /// the browser and writes the refreshed token back to the same Keychain item
+    /// we already read from. We never touch the token ourselves (see "Why
+    /// read-only" in README) — this just runs the exact command you'd type in a
+    /// Terminal, one click away. Uses a login shell so it finds `claude` on PATH
+    /// wherever it's installed (Homebrew, nvm, ~/.local/bin, …).
+    @objc private func signIn() {
+        let shell = ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: shell)
+        p.arguments = ["-l", "-c", "claude auth login"]
+        p.standardOutput = FileHandle.nullDevice
+        p.standardError = FileHandle.nullDevice
+        try? p.run()
+    }
+
     @objc private func poll() {
         // Skip the network hit while backing off from a 429; still refresh locals.
         let fetchReal = backoffUntil.map { Date() >= $0 } ?? true
@@ -358,7 +374,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if real.limits.isEmpty {
             let msg: String
             if real.authExpired {
-                msg = "Not signed in. Run  claude  →  /login  in a Terminal,\nthen this lights up automatically."
+                msg = "Not signed in. Click “Sign in…” below,\nor run  claude  →  /login  in a Terminal."
             } else if real.transient {
                 msg = "Couldn’t reach the usage endpoint yet — will retry."
             } else {
@@ -405,7 +421,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if real.ok, let f = f {
             status = "Live · updated \(f)"
         } else if real.authExpired {
-            status = f.map { "Signed out · last \($0) · run /login" } ?? "Signed out · run  claude → /login"
+            status = f.map { "Signed out · last \($0)" } ?? "Signed out"
         } else if real.transient {
             let why = real.rateLimited ? "rate-limited, backing off" : "offline"
             status = f.map { "Showing \($0) data · \(why)" } ?? "Waiting… · \(why)"
@@ -413,6 +429,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             status = "Loading…"
         }
         disabled(status, menu)
+
+        if real.authExpired {
+            let signInItem = NSMenuItem(title: "Sign in…", action: #selector(signIn), keyEquivalent: "")
+            signInItem.target = self
+            menu.addItem(signInItem)
+        }
 
         let r = NSMenuItem(title: "Refresh now", action: #selector(forceRefresh), keyEquivalent: "r"); r.target = self
         menu.addItem(r)

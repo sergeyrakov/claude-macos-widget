@@ -122,7 +122,8 @@ cd claude-macos-widget
 **LaunchAgent** so it starts at login, and launches it now. Re-running it is safe (idempotent).
 
 The widget appears at the right of your menu bar. If it reads `✦ login`, your CLI token is stale —
-run `claude` then `/login` once in a Terminal and it lights up automatically.
+open the dropdown and click **Sign in…** (or run `claude` → `/login` yourself in a Terminal) and it
+lights up automatically.
 
 **Build only, without installing / autostart:**
 ```bash
@@ -142,6 +143,9 @@ run `claude` then `/login` once in a Terminal and it lights up automatically.
   - `7-day (scoped / binding model)`
   - `Most-constraining (auto)` — whichever limit is highest right now
   - `Today's cost (local estimate)`
+- **Sign in…** — shown only when signed out; runs `claude auth login` for you, which opens the
+  browser to complete OAuth and writes the token back to the same Keychain item the widget reads.
+  The widget itself never touches the token — this just runs the exact CLI command one click away.
 - **Refresh now** — forces an immediate poll (handy between the minute-aligned auto-refreshes).
 - **Quit** — exits until next login (or run the app again).
 
@@ -246,7 +250,7 @@ for an immediate read (it bypasses the backoff).
 
 | Symptom | Cause / fix |
 |---------|-------------|
-| Bar shows **`✦ login`**, or a trailing **` ·`** after the percent | CLI token expired/absent — genuinely **signed out**. Run `claude` → `/login` once in a Terminal; the widget can't refresh the token by design. A 429 does **not** trigger this. |
+| Bar shows **`✦ login`**, or a trailing **` ·`** after the percent | CLI token expired/absent — genuinely **signed out**. Open the dropdown and click **Sign in…**, or run `claude` → `/login` yourself in a Terminal; the widget can't refresh the token by design. A 429 does **not** trigger this. |
 | Numbers not updating but **bar still white/normal** | Being **rate-limited** (429) and showing the last good values while it backs off. Normal. The dropdown status line says "rate-limited, backing off". |
 | Bar text looks dim, grey, or invisible | Make sure you're on the current build — the icon renders as a solid white non-template image; `attributedTitle` alone does not color the status bar, and older builds also color-coded by usage % (green/yellow/orange/red), which read poorly against a dark menu bar. |
 | Widget didn't start at login | Check the LaunchAgent: `launchctl print gui/$(id -u)/local.claude.usagebar`. Re-run `./install.sh`. |
